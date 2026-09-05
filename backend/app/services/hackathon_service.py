@@ -1,25 +1,50 @@
-from datetime import datetime
-from app.schemas.hackathon import HackathonCreate, HackathonOut
+from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 
-# Fake in-memory "database" just so we have something to work with
-
-_fake_db: list[dict] = []        # change when the Dataset is ready
-_next_id = 1
+from app.db.models import Hackathon
+from app.schemas.hackathon import HackathonCreate, HackathonUpdate, HackathonOut
 
 
 class HackathonService:
+    def __init__(self, db: Session):
+        self.db = db
+
     def create(self, payload: HackathonCreate) -> HackathonOut:
-        global _next_id     # to take id from global
-        record = {
-            "id": _next_id,
-            "name": payload.name,
-            "description": payload.description,
-            "created_at": datetime.utcnow()
-        }
-        
-        _fake_db.append(record)
-        _next_id += 1
-        return HackathonOut(**record)  # unpacks the dictionary so the dictionary keys become function argument 
-    
+        record = Hackathon(
+            name=payload.name,
+            description=payload.description,
+        )
+        self.db.add(record)
+        self.db.commit()
+        self.db.refresh(record)
+        return HackathonOut.model_validate(record)
+
     def list(self) -> list[HackathonOut]:
-        return [HackathonOut(**r) for r in _fake_db ]
+        records = self.db.query(Hackathon).all()
+        return [HackathonOut.model_validate(r) for r in records]
+
+    def get(self, hackathon_id: int) -> HackathonOut:
+        record = self.db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+        if not record:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hackathon not found")
+        return HackathonOut.model_validate(record)
+
+    def update(self, hackathon_id: int, payload: HackathonUpdate) -> HackathonOut:
+        record = self.db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+        if not record:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hackathon not found")
+
+        update_data = payload.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(record, field, value)
+
+        self.db.commit()
+        self.db.refresh(record)
+        return HackathonOut.model_validate(record)
+
+    def delete(self, hackathon_id: int) -> None:
+        record = self.db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+        if not record:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hackathon not found")
+        self.db.delete(record)
+        self.db.commit()

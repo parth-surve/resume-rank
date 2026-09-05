@@ -12,3 +12,7 @@ class HackathonOut(BaseModel):
     name: str
     description: str | None = None
     created_at: datetime
+    
+class HackathonUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
