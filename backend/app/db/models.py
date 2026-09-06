@@ -22,3 +22,14 @@ class Domain(Base):
     name: Mapped[str] = mapped_column(String(255))
     hackathon_id: Mapped[int] = mapped_column(ForeignKey("hackathons.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    
+    
+class Import(Base):
+    __tablename__ = "imports"
+    id:Mapped[int] = map
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hackathon_id: Mapped[int] = mapped_column(ForeignKey("hackathons.id"))
+    domain_id: Mapped[int] = mapped_column(ForeignKey("domains.id"))
+    filename: Mapped[str] = mapped_column(String(255))
+    file_path: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
