@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     APP_NAME: str = "ATS Backend"
     # ... your other fields with sensible defaults
     DATABASE_URL: str 
-    
-    
+
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480 #8 hours
+
+
 settings = Settings()
