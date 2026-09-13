@@ -9,12 +9,11 @@ class CriterionEvaluation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     score: int = Field(
-        ge=0, # Mininum score is called ge which is 0 an max is called le which we havne't used
+        ge=0,
         description="Score assigned to this criterion."
     )
 
     evidence: list[str] = Field(
-        default_factory=list,
         description="Evidence from the candidate information supporting the score."
     )
 
@@ -29,6 +28,8 @@ class TechnicalSkillsEvaluation(BaseModel):
     Evaluation of the candidate's technical skills.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     skill_match: CriterionEvaluation
     proficiency_evidence: CriterionEvaluation
     technical_depth: CriterionEvaluation
@@ -39,6 +40,8 @@ class RelevantExperienceEvaluation(BaseModel):
     Evaluation of the candidate's relevant experience.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     relevance_and_responsibility: CriterionEvaluation
     technical_depth: CriterionEvaluation
     evidence_and_impact: CriterionEvaluation
@@ -48,6 +51,8 @@ class ProjectsEvaluation(BaseModel):
     """
     Evaluation of the candidate's projects.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     technical_complexity_and_depth: CriterionEvaluation
     ownership_and_implementation: CriterionEvaluation
@@ -60,6 +65,8 @@ class DemonstratedPotentialEvaluation(BaseModel):
     Evaluation of the candidate's demonstrated potential.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     learning_and_growth: CriterionEvaluation
     initiative_and_ownership: CriterionEvaluation
     evidence_of_trajectory: CriterionEvaluation
@@ -69,6 +76,8 @@ class DomainRelevanceEvaluation(BaseModel):
     """
     Evaluation of the candidate's domain relevance.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     domain_alignment: CriterionEvaluation
 
