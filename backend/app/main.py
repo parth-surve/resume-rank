@@ -1,10 +1,20 @@
 from fastapi import FastAPI
-from app.core.config import settings
-from app.api.v1 import hackathons,domains
 
-app = FastAPI(title=settings.APP_NAME)
+from app.api.v1.hackathons import router as hackathon_router
+from app.api.v1.domains import router as domain_router
+from app.api.v1.domains import nested_router as domain_nested_router
+from app.api.v1.imports import router as import_router
 
-app.include_router(hackathons.router)
+app = FastAPI(
+    title="ResumeRank Backend",
+)
 
-app.include_router(domains.router)
-app.include_router(domains.nested_router)
+
+app.include_router(hackathon_router)
+app.include_router(domain_router)
+app.include_router(domain_nested_router)
+app.include_router(import_router)
+
+@app.get("/")
+def root():
+    return {"message": "ATS Backend is running"}
