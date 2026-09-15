@@ -2,9 +2,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.db.models.user import User          # need to confirm this path w/ db member
+from app.db.models import User          # need to confirm this path w/ db member
 from app.core.security import verify_password, create_access_token
-
+from app.db.models import User
 
 class AuthService:
     # this class handles all the login stuff / user lookups
