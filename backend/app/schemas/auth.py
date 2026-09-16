@@ -25,7 +25,6 @@ class UserOut(BaseModel):
     shown to the frontend/client, so no sensitive fields.
     """
     id: int
-    username: str
     name: str
     email: EmailStr
     role: str

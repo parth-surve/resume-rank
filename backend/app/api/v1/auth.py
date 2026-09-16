@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db          # need to confirm exact path w/ db member
+from app.db.database import get_db          # need to confirm exact path w/ db member
 from app.schemas.auth import LoginRequest, TokenResponse, UserOut
 from app.services.auth_service import AuthService
 from app.deps import get_current_user        # writing this file next

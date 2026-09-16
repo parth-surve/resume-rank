@@ -22,21 +22,22 @@ def verify_password (plain_password: str, hashed_password: str) -> bool:
 
 # JWT set up
 
-def create_access_token (user_id: int, username: str, role: str) -> str:
-    """
-    User information -> JWT creation -> access token
-    Called once, right after login is successful.
-    """
-    expire = datetime.now(timezone.utc) + timedelta(minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+def create_access_token(user_id: int, role: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
     payload = {
-        "sub": str(user_id),          #"subject" - who this token belongs to
-        "username": username,
+        "sub": str(user_id),
         "role": role,
-        "exp": expire                #jose checks this automically on decode
+        "exp": expire,
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm = settings.ALGORITHM)
 
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
 def decode_access_token (token: str) -> dict:
     """
     JWT -> verify -> extract user information
