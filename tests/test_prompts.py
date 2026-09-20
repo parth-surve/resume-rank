@@ -151,5 +151,7 @@ def test_evaluator_returns_candidate_evaluation(monkeypatch):
         provider="gemini",
     )
 
-    assert isinstance(result, CandidateEvaluation)
-    assert result == expected
+    assert isinstance(result, dict)
+    assert isinstance(result["evaluation"], CandidateEvaluation)
+    assert "scores" in result
+    assert "guardrails" in result

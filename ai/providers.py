@@ -100,3 +100,43 @@ def generate_with_gemini(prompt: str, response_model: type[BaseModel]) -> BaseMo
         raise ValueError("Gemini returned an empty response.")
 
     return response_model.model_validate_json(response.text)
+def generate_with_ollama(
+    prompt: str,
+    response_model: type[BaseModel],
+) -> BaseModel:
+    import requests
+
+    model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
+
+    schema = response_model.model_json_schema()
+
+    response = requests.post(
+        url,
+        json={
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            "stream": False,
+            "format": schema,
+            "options": {
+                "temperature": 0.1,
+            },
+        },
+        timeout=120,
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    content = data.get("message", {}).get("content")
+
+    if not content:
+        raise ValueError("Ollama returned an empty response.")
+
+    return response_model.model_validate_json(content)

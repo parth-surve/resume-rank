@@ -72,9 +72,9 @@ def make_mock_evaluation() -> CandidateEvaluation:
             },
             "demonstrated_potential": {
                 "learning_and_growth": {
-                    "score": 2,
-                    "evidence": ["FastAPI", "PostgreSQL"],
-                    "reason": "Multiple technologies are demonstrated.",
+                    "score": 0,
+                    "evidence": [],
+                    "reason": "No explicit evidence of technical growth was provided.",
                 },
                 "initiative_and_ownership": {
                     "score": 3,
@@ -82,9 +82,9 @@ def make_mock_evaluation() -> CandidateEvaluation:
                     "reason": "A concrete project demonstrates initiative.",
                 },
                 "evidence_of_trajectory": {
-                    "score": 2,
-                    "evidence": ["Backend internship"],
-                    "reason": "Some progression is demonstrated.",
+                    "score": 0,
+                    "evidence": [],
+                    "reason": "No chronological evidence of technical progression was provided.",
                 },
             },
             "domain_relevance": {
@@ -112,10 +112,12 @@ def test_evaluate_candidate_uses_groq():
             provider="groq",
         )
 
-    assert result == mock_evaluation
+    assert result["evaluation"] == mock_evaluation
+    assert result["scores"]["total_score"] == 44
     mock_groq.assert_called_once()
 
     _, kwargs = mock_groq.call_args
+
     assert kwargs["response_model"] is CandidateEvaluation
     assert "Python developer" in kwargs["prompt"]
 
@@ -134,19 +136,61 @@ def test_evaluate_candidate_uses_gemini():
             provider="gemini",
         )
 
-    assert result == mock_evaluation
+    assert result["evaluation"] == mock_evaluation
+    assert result["scores"]["total_score"] == 44
     mock_gemini.assert_called_once()
 
     _, kwargs = mock_gemini.call_args
+
+    assert kwargs["response_model"] is CandidateEvaluation
+    assert "Python developer" in kwargs["prompt"]
+
+
+def test_evaluate_candidate_uses_ollama():
+    mock_evaluation = make_mock_evaluation()
+
+    with patch(
+        "ai.evaluator.generate_with_ollama",
+        return_value=mock_evaluation,
+    ) as mock_ollama:
+        result = evaluate_candidate(
+            resume_text="Python developer with FastAPI experience.",
+            rubric="Technical Skills /20",
+            domain_requirements="Backend development",
+            provider="ollama",
+        )
+
+    assert result["evaluation"] == mock_evaluation
+    assert result["scores"]["total_score"] == 44
+    mock_ollama.assert_called_once()
+
+    _, kwargs = mock_ollama.call_args
+
     assert kwargs["response_model"] is CandidateEvaluation
     assert "Python developer" in kwargs["prompt"]
 
 
 def test_evaluate_candidate_rejects_unsupported_provider():
-    with pytest.raises(ValueError, match="Unsupported AI provider"):
+    with pytest.raises(
+        ValueError,
+        match="Unsupported AI provider",
+    ):
         evaluate_candidate(
             resume_text="Python developer.",
             rubric="Technical Skills /20",
             domain_requirements="Backend development",
             provider="invalid",
+        )
+
+
+def test_evaluate_candidate_blocks_invalid_resume():
+    with pytest.raises(
+        ValueError,
+        match="Resume text is empty",
+    ):
+        evaluate_candidate(
+            resume_text="",
+            rubric="Technical Skills /20",
+            domain_requirements="Backend development",
+            provider="groq",
         )
