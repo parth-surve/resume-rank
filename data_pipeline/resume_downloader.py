@@ -26,5 +26,5 @@ def download_resume_in_memory(url:str,timeout:int=15):
    except requests.exceptions.RequestException as e:
        return {"success": False,"resume_text":"","reason":f"Network failure:{type(e).__name__}"}
    except Exception as e:
-       return {"success":False,"resume_text":"","reason":"Processing error: {str(e)}"}
-print(download_resume_in_memory(url))
+       return {f"success":False,"resume_text":"","reason":"Processing error: {str(e)}"}
+   
