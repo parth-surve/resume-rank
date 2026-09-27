@@ -8,11 +8,15 @@ import pandas as pd
 ALLOWED_SCHEMES = {"http", "https"}
 
 def is_public_ip(hostname: str) -> bool:
-    """Resolves hostname to IP and verifies it is not on a private/internal network."""
+    """Resolve every address and reject hosts with any non-public result."""
     try:
-        ip_string = socket.gethostbyname(hostname)
-        ip = ipaddress.ip_address(ip_string)
-        return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved)
+        addresses = {
+            result[4][0]
+            for result in socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+        }
+        return bool(addresses) and all(
+            ipaddress.ip_address(address).is_global for address in addresses
+        )
     except Exception:
         return False
 
@@ -34,6 +38,22 @@ def validate_and_convert_url(url: str) -> dict:
                 "download_url": None,
             }
 
+        if parsed.username is not None or parsed.password is not None:
+            return {
+                "is_valid": False,
+                "reason": "Credentials in URLs are not allowed",
+                "download_url": None,
+            }
+
+        try:
+            parsed.port
+        except ValueError:
+            return {
+                "is_valid": False,
+                "reason": "Malformed URL port",
+                "download_url": None,
+            }
+
         if not parsed.hostname or not is_public_ip(parsed.hostname):
             return {
                 "is_valid": False,
@@ -42,7 +62,7 @@ def validate_and_convert_url(url: str) -> dict:
             }
 
         # Google Drive transformation
-        if "drive.google.com" in parsed.hostname:
+        if parsed.hostname.lower() == "drive.google.com":
             drive_id_match = re.search(r"(?:/file/d/|id=)([\w-]+)", clean_url)
             if drive_id_match:
                 file_id = drive_id_match.group(1)
