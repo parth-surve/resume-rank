@@ -14,7 +14,6 @@ from app.schemas.screening import (
 from app.services.screening_service import ScreeningService
 from app.workflows.screening_workflow import run_screening
 from app.deps import require_role
-from app.core.metrics import SCREENING_STARTS
 
 
 router = APIRouter(
@@ -66,7 +65,6 @@ def start_screening(
     db: Session = Depends(get_db),
 ):
     result = ScreeningService(db).start(screening_id)
-    SCREENING_STARTS.inc()
 
     def _run():
         bg_db = SessionLocal()

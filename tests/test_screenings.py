@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.deps import get_current_user
 from app.services.screening_service import ScreeningService
+from app.core.metrics import SCREENING_STARTS
 from app.main import app
 from app.db.database import SessionLocal
 from app.db.models import (
@@ -276,6 +277,7 @@ def test_start_screening_creates_candidate_processing(
     screening_test_data,
 ):
     screening = create_screening(screening_test_data)
+    starts_before = SCREENING_STARTS._value.get()
 
     # Prevent the real background workflow from running.
     with patch(
@@ -286,6 +288,7 @@ def test_start_screening_creates_candidate_processing(
         )
 
     assert response.status_code == 200
+    assert SCREENING_STARTS._value.get() == starts_before + 1
 
     data = response.json()
 

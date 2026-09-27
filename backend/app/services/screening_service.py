@@ -21,6 +21,7 @@ from app.schemas.screening import (
     ScreeningResultItem,
     ScreeningStartOut,
 )
+from app.core.metrics import SCREENING_STARTS
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,7 @@ class ScreeningService:
 
         self.db.commit()
         self.db.refresh(screening)
+        SCREENING_STARTS.inc()
 
         logger.info(
             "Screening started: screening_id=%s total_candidates=%s",
