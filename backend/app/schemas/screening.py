@@ -3,6 +3,8 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
+from app.db.models import ScreeningResultStatus
+
 
 class ScreeningStatusEnum(str, Enum):
     PENDING = "PENDING"
@@ -61,3 +63,8 @@ class PaginatedResults(BaseModel):
     page: int
     page_size: int
     items: list[ScreeningResultItem]
+
+
+class ManualOverrideRequest(BaseModel):
+    new_status: ScreeningResultStatus
+    reason: str

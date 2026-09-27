@@ -12,6 +12,7 @@ from app.db.models import (
     ScreeningStatus,
     Team,
     TeamMember,
+    ManualOverride,
 )
 from app.schemas.screening import (
     PaginatedResults,
@@ -190,6 +191,61 @@ class ScreeningService:
             page_size=page_size,
             items=items,
         )
+
+    def manual_override(
+        self,
+        screening_id: int,
+        result_id: int,
+        new_status: ScreeningResultStatus,
+        reason: str,
+        user_id: int,
+    ) -> ScreeningResult:
+        screening = self.get(screening_id)
+
+        result = (
+            self.db.query(ScreeningResult)
+            .filter(
+                ScreeningResult.id == result_id,
+                ScreeningResult.screening_id == screening.id,
+            )
+            .first()
+        )
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Screening result not found",
+            )
+
+        if not reason.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Override reason is required",
+            )
+
+        previous_status = result.result_status
+
+        if previous_status == new_status:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New status must be different from the current status",
+            )
+
+        result.result_status = new_status
+
+        override = ManualOverride(
+            screening_result_id=result.id,
+            previous_status=previous_status,
+            new_status=new_status,
+            reason=reason.strip(),
+            overridden_by=user_id,
+        )
+
+        self.db.add(override)
+        self.db.commit()
+        self.db.refresh(result)
+
+        return result
 
     def get_failures(self, screening_id: int) -> List[ProcessingFailure]:
         self.get(screening_id)

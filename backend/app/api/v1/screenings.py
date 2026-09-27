@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal, get_db
 from app.schemas.screening import (
+    ManualOverrideRequest,
     PaginatedResults,
     ScreeningCreate,
     ScreeningOut,
@@ -12,6 +13,7 @@ from app.schemas.screening import (
 )
 from app.services.screening_service import ScreeningService
 from app.workflows.screening_workflow import run_screening
+from app.deps import require_role
 
 
 router = APIRouter(
@@ -66,7 +68,6 @@ def start_screening(
 
     def _run():
         bg_db = SessionLocal()
-
         try:
             asyncio.run(run_screening(screening_id, bg_db))
         finally:
@@ -104,3 +105,24 @@ def get_screening_failures(
     db: Session = Depends(get_db),
 ):
     return ScreeningService(db).get_failures(screening_id)
+
+
+@router.patch(
+    "/{screening_id}/results/{result_id}/override",
+)
+def manual_override(
+    screening_id: int,
+    result_id: int,
+    payload: ManualOverrideRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_role("ADMIN", "ORGANIZER", "SUPERADMIN")
+    ),
+):
+    return ScreeningService(db).manual_override(
+        screening_id=screening_id,
+        result_id=result_id,
+        new_status=payload.new_status,
+        reason=payload.reason,
+        user_id=current_user.id,
+    )

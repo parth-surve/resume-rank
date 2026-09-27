@@ -1,20 +1,29 @@
 import uuid
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from app.deps import get_current_user
+from app.services.screening_service import ScreeningService
 from app.main import app
 from app.db.database import SessionLocal
 from app.db.models import (
     Candidate,
     CandidateProcessing,
     Domain,
+    Evaluation,
     Hackathon,
+    ManualOverride,
     Resume,
     Screening,
+    ScreeningResult,
+    ScreeningResultStatus,
     Team,
     TeamMember,
+    User,
 )
 
 client = TestClient(app)
@@ -298,3 +307,447 @@ def test_start_screening_creates_candidate_processing(
     assert processing is not None
 
     db.close()
+
+def test_manual_override_updates_result_and_creates_audit(
+    screening_test_data,
+):
+    db = SessionLocal()
+
+    # Create screening
+    screening = Screening(
+        hackathon_id=screening_test_data["hackathon_id"],
+        domain_id=screening_test_data["domain_id"],
+        selection_limit=1,
+        waitlist_limit=1,
+    )
+    db.add(screening)
+    db.flush()
+
+    # Create candidate processing
+    processing = CandidateProcessing(
+        screening_id=screening.id,
+        candidate_id=screening_test_data["candidate_id"],
+    )
+    db.add(processing)
+    db.flush()
+
+    # Create evaluation
+    evaluation = Evaluation(
+        candidate_processing_id=processing.id,
+        model="test-model",
+        prompt_version="test-v1",
+        rubric_version="test-v1",
+        evaluation_data={},
+        technical_skills_score=10,
+        competitive_achievement_score=10,
+        relevant_experience_score=10,
+        projects_score=10,
+        demonstrated_potential_score=10,
+        domain_relevance_score=10,
+        final_score=60,
+    )
+    db.add(evaluation)
+    db.flush()
+
+    # Create screening result
+    result = ScreeningResult(
+        screening_id=screening.id,
+        candidate_processing_id=processing.id,
+        evaluation_id=evaluation.id,
+        final_score=60,
+        result_status=ScreeningResultStatus.SELECTED,
+        rank=1,
+    )
+    db.add(result)
+
+    # Create user who performs the override
+    user = User(
+        name="Override Tester",
+        email=f"override.{uuid.uuid4().hex}@example.com",
+        hashed_password="test-hash",
+    )
+    db.add(user)
+
+    db.commit()
+
+    result_id = result.id
+    screening_id = screening.id
+    user_id = user.id
+
+    try:
+        service = ScreeningService(db)
+
+        updated_result = service.manual_override(
+            screening_id=screening_id,
+            result_id=result_id,
+            new_status=ScreeningResultStatus.REJECTED,
+            reason="Manual review changed the decision",
+            user_id=user_id,
+        )
+
+        assert updated_result.result_status == ScreeningResultStatus.REJECTED
+
+        override = (
+            db.query(ManualOverride)
+            .filter(
+                ManualOverride.screening_result_id == result_id
+            )
+            .first()
+        )
+
+        assert override is not None
+        assert override.previous_status == ScreeningResultStatus.SELECTED
+        assert override.new_status == ScreeningResultStatus.REJECTED
+        assert override.reason == "Manual review changed the decision"
+        assert override.overridden_by == user_id
+
+    finally:
+        db.query(ManualOverride).filter(
+            ManualOverride.screening_result_id == result_id
+        ).delete(synchronize_session=False)
+
+        db.query(ScreeningResult).filter(
+            ScreeningResult.id == result_id
+        ).delete(synchronize_session=False)
+
+        db.query(Evaluation).filter(
+            Evaluation.id == evaluation.id
+        ).delete(synchronize_session=False)
+
+        db.query(CandidateProcessing).filter(
+            CandidateProcessing.id == processing.id
+        ).delete(synchronize_session=False)
+
+        db.query(User).filter(
+            User.id == user_id
+        ).delete(synchronize_session=False)
+
+        db.query(Screening).filter(
+            Screening.id == screening_id
+        ).delete(synchronize_session=False)
+
+        db.commit()
+        db.close()
+
+
+def test_manual_override_rejects_empty_reason(screening_test_data):
+    db = SessionLocal()
+
+    screening = Screening(
+        hackathon_id=screening_test_data["hackathon_id"],
+        domain_id=screening_test_data["domain_id"],
+        selection_limit=1,
+        waitlist_limit=1,
+    )
+    db.add(screening)
+    db.flush()
+
+    processing = CandidateProcessing(
+        screening_id=screening.id,
+        candidate_id=screening_test_data["candidate_id"],
+    )
+    db.add(processing)
+    db.flush()
+
+    evaluation = Evaluation(
+        candidate_processing_id=processing.id,
+        model="test-model",
+        prompt_version="test-v1",
+        rubric_version="test-v1",
+        evaluation_data={},
+        technical_skills_score=10,
+        competitive_achievement_score=10,
+        relevant_experience_score=10,
+        projects_score=10,
+        demonstrated_potential_score=10,
+        domain_relevance_score=10,
+        final_score=60,
+    )
+    db.add(evaluation)
+    db.flush()
+
+    result = ScreeningResult(
+        screening_id=screening.id,
+        candidate_processing_id=processing.id,
+        evaluation_id=evaluation.id,
+        final_score=60,
+        result_status=ScreeningResultStatus.SELECTED,
+        rank=1,
+    )
+    db.add(result)
+    db.commit()
+
+    try:
+        service = ScreeningService(db)
+
+        with pytest.raises(HTTPException) as exc:
+            service.manual_override(
+                screening_id=screening.id,
+                result_id=result.id,
+                new_status=ScreeningResultStatus.REJECTED,
+                reason="   ",
+                user_id=1,
+            )
+
+        assert exc.value.status_code == 400
+        assert exc.value.detail == "Override reason is required"
+
+    finally:
+        db.query(ScreeningResult).filter(
+            ScreeningResult.id == result.id
+        ).delete(synchronize_session=False)
+
+        db.query(Evaluation).filter(
+            Evaluation.id == evaluation.id
+        ).delete(synchronize_session=False)
+
+        db.query(CandidateProcessing).filter(
+            CandidateProcessing.id == processing.id
+        ).delete(synchronize_session=False)
+
+        db.query(Screening).filter(
+            Screening.id == screening.id
+        ).delete(synchronize_session=False)
+
+        db.commit()
+        db.close()
+
+def test_manual_override_rejects_same_status(screening_test_data):
+    db = SessionLocal()
+
+    screening = Screening(
+        hackathon_id=screening_test_data["hackathon_id"],
+        domain_id=screening_test_data["domain_id"],
+        selection_limit=1,
+        waitlist_limit=1,
+    )
+    db.add(screening)
+    db.flush()
+
+    processing = CandidateProcessing(
+        screening_id=screening.id,
+        candidate_id=screening_test_data["candidate_id"],
+    )
+    db.add(processing)
+    db.flush()
+
+    evaluation = Evaluation(
+        candidate_processing_id=processing.id,
+        model="test-model",
+        prompt_version="test-v1",
+        rubric_version="test-v1",
+        evaluation_data={},
+        technical_skills_score=10,
+        competitive_achievement_score=10,
+        relevant_experience_score=10,
+        projects_score=10,
+        demonstrated_potential_score=10,
+        domain_relevance_score=10,
+        final_score=60,
+    )
+    db.add(evaluation)
+    db.flush()
+
+    result = ScreeningResult(
+        screening_id=screening.id,
+        candidate_processing_id=processing.id,
+        evaluation_id=evaluation.id,
+        final_score=60,
+        result_status=ScreeningResultStatus.SELECTED,
+        rank=1,
+    )
+    db.add(result)
+    db.commit()
+
+    try:
+        service = ScreeningService(db)
+
+        with pytest.raises(HTTPException) as exc:
+            service.manual_override(
+                screening_id=screening.id,
+                result_id=result.id,
+                new_status=ScreeningResultStatus.SELECTED,
+                reason="Manual review",
+                user_id=1,
+            )
+
+        assert exc.value.status_code == 400
+        assert exc.value.detail == (
+            "New status must be different from the current status"
+        )
+
+    finally:
+        db.query(ScreeningResult).filter(
+            ScreeningResult.id == result.id
+        ).delete(synchronize_session=False)
+
+        db.query(Evaluation).filter(
+            Evaluation.id == evaluation.id
+        ).delete(synchronize_session=False)
+
+        db.query(CandidateProcessing).filter(
+            CandidateProcessing.id == processing.id
+        ).delete(synchronize_session=False)
+
+        db.query(Screening).filter(
+            Screening.id == screening.id
+        ).delete(synchronize_session=False)
+
+        db.commit()
+        db.close()
+
+def test_manual_override_api_updates_result_and_creates_audit(
+    screening_test_data,
+):
+    db = SessionLocal()
+
+    screening = Screening(
+        hackathon_id=screening_test_data["hackathon_id"],
+        domain_id=screening_test_data["domain_id"],
+        selection_limit=1,
+        waitlist_limit=1,
+    )
+    db.add(screening)
+    db.flush()
+
+    processing = CandidateProcessing(
+        screening_id=screening.id,
+        candidate_id=screening_test_data["candidate_id"],
+    )
+    db.add(processing)
+    db.flush()
+
+    evaluation = Evaluation(
+        candidate_processing_id=processing.id,
+        model="test-model",
+        prompt_version="test-v1",
+        rubric_version="test-v1",
+        evaluation_data={},
+        technical_skills_score=10,
+        competitive_achievement_score=10,
+        relevant_experience_score=10,
+        projects_score=10,
+        demonstrated_potential_score=10,
+        domain_relevance_score=10,
+        final_score=60,
+    )
+    db.add(evaluation)
+    db.flush()
+
+    result = ScreeningResult(
+        screening_id=screening.id,
+        candidate_processing_id=processing.id,
+        evaluation_id=evaluation.id,
+        final_score=60,
+        result_status=ScreeningResultStatus.SELECTED,
+        rank=1,
+    )
+    db.add(result)
+
+    user = User(
+        name="API Override Tester",
+        email=f"api.override.{uuid.uuid4().hex}@example.com",
+        hashed_password="test-hash",
+    )
+    db.add(user)
+
+    db.commit()
+
+    screening_id = screening.id
+    result_id = result.id
+    user_id = user.id
+
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=user_id,
+        role=SimpleNamespace(value="ADMIN"),
+    )
+
+    try:
+        response = client.patch(
+            f"/api/v1/screenings/{screening_id}/results/{result_id}/override",
+            json={
+                "new_status": "REJECTED",
+                "reason": "Manual API review changed the decision",
+            },
+        )
+
+        assert response.status_code == 200
+
+        db.refresh(result)
+
+        assert result.result_status == ScreeningResultStatus.REJECTED
+
+        override = (
+            db.query(ManualOverride)
+            .filter(
+                ManualOverride.screening_result_id == result_id
+            )
+            .first()
+        )
+
+        assert override is not None
+        assert override.previous_status == ScreeningResultStatus.SELECTED
+        assert override.new_status == ScreeningResultStatus.REJECTED
+        assert override.reason == "Manual API review changed the decision"
+        assert override.overridden_by == user_id
+
+    finally:
+        app.dependency_overrides.clear()
+
+        db.query(ManualOverride).filter(
+            ManualOverride.screening_result_id == result_id
+        ).delete(synchronize_session=False)
+
+        db.query(ScreeningResult).filter(
+            ScreeningResult.id == result_id
+        ).delete(synchronize_session=False)
+
+        db.query(Evaluation).filter(
+            Evaluation.id == evaluation.id
+        ).delete(synchronize_session=False)
+
+        db.query(CandidateProcessing).filter(
+            CandidateProcessing.id == processing.id
+        ).delete(synchronize_session=False)
+
+        db.query(User).filter(
+            User.id == user_id
+        ).delete(synchronize_session=False)
+
+        db.query(Screening).filter(
+            Screening.id == screening_id
+        ).delete(synchronize_session=False)
+
+        db.commit()
+        db.close()
+
+def test_manual_override_api_requires_authentication():
+    response = client.patch(
+        "/api/v1/screenings/1/results/1/override",
+        json={
+            "new_status": "REJECTED",
+            "reason": "Manual review",
+        },
+    )
+
+    assert response.status_code == 401
+
+def test_manual_override_api_rejects_unauthorized_role():
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=1,
+        role=SimpleNamespace(value="UNAUTHORIZED"),
+    )
+
+    try:
+        response = client.patch(
+            "/api/v1/screenings/1/results/1/override",
+            json={
+                "new_status": "REJECTED",
+                "reason": "Manual review",
+            },
+        )
+
+        assert response.status_code == 403
+
+    finally:
+        app.dependency_overrides.clear()
