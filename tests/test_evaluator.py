@@ -114,6 +114,11 @@ def test_evaluate_candidate_uses_groq():
 
     assert result["evaluation"] == mock_evaluation
     assert result["scores"]["total_score"] == 44
+    assert result["metadata"] == {
+        "prompt_version": "v1",
+        "provider": "groq",
+        "model": "qwen/qwen3.8-27b",
+    }
     mock_groq.assert_called_once()
 
     _, kwargs = mock_groq.call_args

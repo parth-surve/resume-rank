@@ -1,3 +1,5 @@
+import os
+
 from ai.prompts.base import build_screening_prompt
 from ai.providers import (
     generate_with_groq,
@@ -8,9 +10,38 @@ from ai.schemas import CandidateEvaluation
 from ai.guardrails import check_resume_input, check_evaluator_output, GuardrailStatus
 from ai.validators import validate_evaluation
 from ai.scoring import calculate_scores
+from ai.metrics import EVALUATIONS, EVALUATION_DURATION
 
 
 def evaluate_candidate(
+    resume_text: str,
+    rubric: str,
+    domain_requirements: str,
+    prompt_version: str = "v1",
+    provider: str = "groq",
+) -> dict:
+    """Evaluate a candidate while recording outcome and elapsed time."""
+    from time import perf_counter
+
+    started = perf_counter()
+    outcome = "failure"
+    try:
+        result = _evaluate_candidate(
+            resume_text, rubric, domain_requirements, prompt_version, provider
+        )
+        outcome = "success"
+        return result
+    finally:
+        metric_provider = (
+            provider if provider in {"groq", "gemini", "ollama"} else "unsupported"
+        )
+        EVALUATIONS.labels(metric_provider, outcome).inc()
+        EVALUATION_DURATION.labels(metric_provider).observe(
+            perf_counter() - started
+        )
+
+
+def _evaluate_candidate(
     resume_text: str,
     rubric: str,
     domain_requirements: str,
@@ -113,9 +144,20 @@ def evaluate_candidate(
     # 7. FINAL RESULT
     # --------------------------------------------------------
 
+    model_env, default_model = {
+        "groq": ("GROQ_MODEL", "qwen/qwen3.8-27b"),
+        "gemini": ("GEMINI_MODEL", "gemini-3.6-flash"),
+        "ollama": ("OLLAMA_MODEL", "qwen2.5:7b"),
+    }[provider]
+
     return {
         "evaluation": evaluation,
         "scores": scores,
+        "metadata": {
+            "prompt_version": prompt_version,
+            "provider": provider,
+            "model": os.getenv(model_env, default_model),
+        },
         "guardrails": {
             "input": {
                 "status": guardrail_result.status.value,
