@@ -7,6 +7,7 @@ from app.api.v1.imports import router as import_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.candidates import router as candidates_router
 from app.api.v1.resumes import router as resumes_router
+from app.api.v1.screenings import router as screenings_router
 
 
 app = FastAPI(title="ResumeRank Backend")
@@ -19,6 +20,7 @@ app.include_router(import_router)
 app.include_router(auth_router)
 app.include_router(candidates_router)
 app.include_router(resumes_router)
+app.include_router(screenings_router)
 
 
 @app.get("/")
