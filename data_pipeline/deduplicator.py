@@ -1,7 +1,6 @@
 from typing import Dict, Tuple, Set
 import pandas as pd
-from url_validator import validate_and_convert_url
-
+from data_pipeline.url_validator import validate_and_convert_url
 
 def check_cross_team_email_duplicates(valid_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
