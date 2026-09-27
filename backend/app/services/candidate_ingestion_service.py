@@ -1,7 +1,9 @@
+import logging
 from sqlalchemy.orm import Session
 
 from app.db.models import Candidate, Resume
 
+logger = logging.getLogger(__name__)
 
 class CandidateIngestionService:
     def __init__(self, db: Session):
@@ -52,5 +54,11 @@ class CandidateIngestionService:
                 created_resumes.append(resume)
 
         self.db.commit()
+
+        logger.info(
+            "Candidate ingestion completed: candidates_created=%s resumes_created=%s",
+            len(created_candidates),
+            len(created_resumes),
+        )
 
         return created_candidates, created_resumes

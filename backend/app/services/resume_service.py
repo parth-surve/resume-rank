@@ -1,9 +1,11 @@
+import logging
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.models import Candidate, Resume
 from app.schemas.resume import ResumeCreate, ResumeOut
 
+logger = logging.getLogger(__name__)
 
 class ResumeService:
     def __init__(self, db: Session):
@@ -33,6 +35,12 @@ class ResumeService:
         self.db.add(resume)
         self.db.commit()
         self.db.refresh(resume)
+        
+        logger.info(
+            "Resume created: resume_id=%s candidate_id=%s",
+            resume.id,
+            resume.candidate_id,
+        )
 
         return ResumeOut.model_validate(resume)
 

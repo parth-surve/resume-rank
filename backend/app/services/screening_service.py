@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -21,6 +22,7 @@ from app.schemas.screening import (
     ScreeningStartOut,
 )
 
+logger = logging.getLogger(__name__)
 
 class ScreeningService:
     def __init__(self, db: Session):
@@ -88,6 +90,10 @@ class ScreeningService:
         candidate_ids = [candidate_id for (candidate_id,) in candidate_ids]
 
         if not candidate_ids:
+            logger.warning(
+                "Screening start failed: screening_id=%s reason=no_candidates",
+                screening_id,
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No candidates found for this hackathon/domain",
@@ -122,6 +128,12 @@ class ScreeningService:
 
         self.db.commit()
         self.db.refresh(screening)
+
+        logger.info(
+            "Screening started: screening_id=%s total_candidates=%s",
+            screening.id,
+            screening.total_candidates,
+        )
 
         return ScreeningStartOut(
             screening_id=screening.id,
@@ -244,6 +256,16 @@ class ScreeningService:
         self.db.add(override)
         self.db.commit()
         self.db.refresh(result)
+
+        logger.info(
+            "Manual override completed: screening_id=%s result_id=%s "
+            "previous_status=%s new_status=%s overridden_by=%s",
+            screening_id,
+            result_id,
+            previous_status.value,
+            new_status.value,
+            user_id,
+        )
 
         return result
 

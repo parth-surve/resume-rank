@@ -1,8 +1,10 @@
+import logging
 from sqlalchemy.orm import Session
 
 from app.db.models import User
 from app.core.security import verify_password, create_access_token
 
+logger = logging.getLogger(__name__)
 
 class AuthService:
     """
@@ -52,12 +54,24 @@ class AuthService:
         user = self.get_user_by_identifier(identifier)
 
         if not user:
+            logger.warning("Authentication failed: user not found")
             return None
 
         if not verify_password(password, user.hashed_password):
+            logger.warning(
+                "Authentication failed: invalid password for user_id=%s", user.id
+            )
             return None
 
-        return create_access_token(
+        token = create_access_token(
             user_id=user.id,
             role=user.role.value,
         )
+
+        logger.info(
+            "Authentication successful: user_id=%s role=%s",
+            user.id,
+            user.role.value,
+        )
+
+        return token

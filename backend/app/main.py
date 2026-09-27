@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.core.logging import setup_logging
 from app.api.v1.hackathons import router as hackathon_router
 from app.api.v1.domains import router as domain_router
 from app.api.v1.domains import nested_router as domain_nested_router
@@ -13,6 +14,7 @@ from app.api.v1.screenings import router as screenings_router
 app = FastAPI(title="ResumeRank Backend")
 
 
+setup_logging()
 app.include_router(hackathon_router)
 app.include_router(domain_router)
 app.include_router(domain_nested_router)

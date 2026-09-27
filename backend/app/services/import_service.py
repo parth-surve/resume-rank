@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,6 +8,7 @@ from app.schemas.imports import ImportCreate, ImportOut
 from data_pipeline.pipeline_runner import run_pipeline
 from app.services.candidate_ingestion_service import CandidateIngestionService
 
+logger = logging.getLogger(__name__)
 
 class ImportService:
     def __init__(self, db: Session):
@@ -55,6 +57,10 @@ class ImportService:
         self.db.refresh(record)
 
         # 4. Run the data pipeline on the uploaded Excel file
+        logger.info(
+            "Import %s pipeline started",
+            record.id,
+        )
         try:
             valid_df, failed_df, downloaded_resumes = run_pipeline(
                 payload.file_path
@@ -67,19 +73,22 @@ class ImportService:
                 )
             )
 
-            print(
-                f"Import {record.id}: "
-                f"{len(valid_df)} valid candidates, "
-                f"{len(failed_df)} failed candidates, "
-                f"{len(downloaded_resumes)} resumes processed, "
-                f"{len(created_candidates)} candidates created, "
-                f"{len(created_resumes)} resumes created."
+            logger.info(
+                "Import %s completed: %s valid candidates, "
+                "%s failed candidates, %s resumes processed, "
+                "%s candidates created, %s resumes created.",
+                record.id,
+                len(valid_df),
+                len(failed_df),
+                len(downloaded_resumes),
+                len(created_candidates),
+                len(created_resumes),
             )
 
         except Exception as pipeline_error:
-            print(
-                f"Import {record.id}: "
-                f"Pipeline failed: {pipeline_error}"
+            logger.exception(
+                "Import %s pipeline failed",
+                record.id,
             )
 
             raise HTTPException(
