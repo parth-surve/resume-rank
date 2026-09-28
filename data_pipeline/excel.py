@@ -62,27 +62,4 @@ def load_excel_sheets(
 
 
 load_excel_sheets()
-#url validator
-# from url_validator import validate_and_convert_url
-# #resume downloader
-# from resume_downloader import download_resume_in_memory
-# #Convert the entire column into a dict
-# # url_dict=df["Member 1 Resume"].dropna().to_dict()
 
-# # Loop through each row in your Excel sheet
-# # for row_idx, raw_url  in url_dict.items():
-#    #1. Clean trailing/leading spaces
-# #    input_url = str(raw_url).strip()
-# #    print(input_url)
-   
-#    # 2. Feed that Excel URL into the validator
-# #    validation_result = validate_and_convert_url(input_url)
-   
-#    #3. Check if the link was safe and valid
-# #    if validation_result["is_valid"]:
-#     #    safe_download_url = validation_result["download_url"]
-#     #    Now pass safe_download_url to resume_downloader.py
-#     #    download_resume_in_memory(safe_download_url)
-# #    else:
-#     #    print(f"Skipping row {row_idx}: {validation_result['reason']}")
-# from validator import validate_dataframe

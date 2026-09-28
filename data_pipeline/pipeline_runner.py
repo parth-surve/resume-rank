@@ -11,6 +11,7 @@ from data_pipeline.deduplicator import (
     check_duplicate_resumes,
 )
 from data_pipeline.resume_downloader import download_resume_in_memory
+from data_pipeline.resume_parser import parse_resume
 
 def run_pipeline(
     file_path: str,
@@ -141,9 +142,9 @@ def run_pipeline(
         else pd.DataFrame()
     )
 
-    # 6. Resume Downloader
-    download_results = []
-
+    # 6&7. Resume Downloader $ Parser
+    pipeline_results = []
+    
     pending_download_df = final_valid_df[
         final_valid_df["processing_status"] == "PENDING"
     ]
@@ -162,28 +163,58 @@ def run_pipeline(
 
         resume_url = row.get("resume_url")
 
-        print(f"Downloading resume for: {candidate_name}")
+        print(f"Processing candidate [{idx}]: {candidate_name}")
 
+        # Step 6: Download resume into memory
         dl_result = download_resume_in_memory(resume_url)
 
-        download_results.append(
+        parsed_data = {}
+        parsing_status = "SKIPPED"
+        parsing_error = None
+
+        # Step 7: Parse resume if download succeeded
+        if dl_result.get("success") and dl_result.get("resume_text"):
+            parse_res = parse_resume(dl_result["resume_text"])
+            parsing_status = parse_res.get("parsing_status", "FAILED")
+            parsed_data = parse_res.get("candidate_data", {})
+            parsing_error = parse_res.get("error_reason")
+
+            if parsing_status == "SUCCESS":
+                print(f"  ✓ Parsed Skills: {parsed_data.get('technical_skills', [])}")
+            else:
+                print(f"  ✗ Parsing failed: {parsing_error}")
+        else:
+            print(f"  ✗ Download failed: {dl_result.get('reason')}")
+
+        pipeline_results.append(
             {
                 "candidate_index": idx,
                 "candidate_name": candidate_name,
                 "resume_url": resume_url,
-                "download_success": dl_result["success"],
-                "resume_text": dl_result.get("resume_text", ""),
+                "download_success": dl_result.get("success", False),
                 "download_reason": dl_result.get("reason"),
+                "parsing_status": parsing_status,
+                "parsing_error": parsing_error,
+                "candidate_data": parsed_data,
+                "raw_resume_text": dl_result.get("resume_text", ""),
             }
         )
 
-    return final_valid_df, final_failed_df, download_results
+
+
+    return final_valid_df, final_failed_df, pipeline_results
 
 
 if __name__ == "__main__":
     # Example standalone usage
     valid_df, failed_df, downloaded_resumes = run_pipeline(
         "Original.xlsx"
+    )
+
+    successful_parses = sum(
+        1
+        for resume in downloaded_resumes
+        if resume.get("parsing_status") == "SUCCESS"
     )
 
     print("\n================ PIPELINE SUMMARY ================")
@@ -193,3 +224,4 @@ if __name__ == "__main__":
         f"Total Resumes Processed in Memory: "
         f"{len(downloaded_resumes)}"
     )
+    print(f"Total Resumes Successfully Parsed: {successful_parses}")
