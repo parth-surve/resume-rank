@@ -1,8 +1,7 @@
 import re
 import logging
 from typing import Dict, Any, List, Optional
-from resume_downloader import download_resume_in_memory
-
+from data_pipeline.resume_downloader import download_resume_in_memory
 # Set up logger for parser debugging
 logger = logging.getLogger(__name__)
 
