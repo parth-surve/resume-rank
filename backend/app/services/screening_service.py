@@ -1,7 +1,15 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
-from app.db.models import Domain, Hackathon, HackathonDomain, Screening
+from app.db.models import (
+    CandidateMaster,
+    CandidateProcessing,
+    Domain,
+    Hackathon,
+    HackathonDomain,
+    Screening,
+    Team,
+    TeamMember,
+)
 from app.schemas.screening import ScreeningCreate
 
 
@@ -92,3 +100,67 @@ class ScreeningService:
 
     def list(self) -> list[Screening]:
         return self.db.query(Screening).all()
+
+    def prepare_candidates(self, screening_id: int) -> list[CandidateProcessing]:
+        screening = self.get(screening_id)
+
+        candidates = (
+            self.db.query(
+                CandidateMaster.id,
+                Team.id.label("team_id"),
+            )
+            .join(
+                TeamMember,
+                TeamMember.candidate_id == CandidateMaster.id,
+            )
+            .join(
+                Team,
+                Team.id == TeamMember.team_id,
+            )
+            .filter(
+                Team.hackathon_id == screening.hackathon_master_id,
+                Team.domain_id == screening.domain_master_id,
+            )
+            .order_by(Team.id.asc(), CandidateMaster.id.asc())
+            .all()
+        )
+
+        processing_records = []
+        seen_candidate_ids = set()
+
+        for candidate_id, team_id in candidates:
+            if candidate_id in seen_candidate_ids:
+                continue
+
+            seen_candidate_ids.add(candidate_id)
+
+            existing = (
+                self.db.query(CandidateProcessing)
+                .filter(
+                    CandidateProcessing.screening_id == screening_id,
+                    CandidateProcessing.candidate_master_id == candidate_id,
+                )
+                .first()
+            )
+
+            if existing:
+                processing_records.append(existing)
+                continue
+
+            processing = CandidateProcessing(
+                screening_id=screening_id,
+                candidate_master_id=candidate_id,
+                team_id=team_id,
+            )
+
+            self.db.add(processing)
+            processing_records.append(processing)
+
+        screening.total_candidate = len(processing_records)
+
+        self.db.commit()
+
+        for processing in processing_records:
+            self.db.refresh(processing)
+
+        return processing_records
