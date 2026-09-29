@@ -2,6 +2,7 @@ from time import perf_counter
 import re
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 
 from app.core.logging import setup_logging
@@ -18,6 +19,14 @@ from app.core.metrics import HTTP_REQUESTS, HTTP_REQUEST_DURATION, metrics_respo
 
 app = FastAPI(title="ResumeRank Backend")
 
+# Setup CORS for frontend clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 setup_logging()
 
@@ -52,6 +61,14 @@ def prometheus_metrics():
     return metrics_response()
 
 
+@app.get("/health", tags=["system"])
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "ResumeRank",
+    }
+
+
 app.include_router(hackathon_router)
 app.include_router(domain_router)
 app.include_router(domain_nested_router)
@@ -65,3 +82,4 @@ app.include_router(screenings_router)
 @app.get("/")
 def root():
     return {"message": "ResumeRank Backend is running"}
+
