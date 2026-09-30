@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class LoginRequest(BaseModel):
@@ -24,10 +24,9 @@ class UserOut(BaseModel):
     Never include hashed_password here — this is what gets
     shown to the frontend/client, so no sensitive fields.
     """
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     email: EmailStr
-    role: str
-
-    class Config:
-        from_attributes = True
+    role: str

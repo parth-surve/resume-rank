@@ -1,7 +1,11 @@
+from contextlib import asynccontextmanager
 from time import perf_counter
+import logging
 import re
+import threading
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 
 from app.core.logging import setup_logging
@@ -15,11 +19,146 @@ from app.api.v1.resumes import router as resumes_router
 from app.api.v1.screenings import router as screenings_router
 from app.core.metrics import HTTP_REQUESTS, HTTP_REQUEST_DURATION, metrics_response
 
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="ResumeRank Backend")
+
+def _resume_interrupted_screenings() -> None:
+    """
+    Called once at startup in a background thread.
+
+    Finds all screenings that were IN_PROGRESS when the server last shut down,
+    resets any stuck PROCESSING candidates back to PENDING, then re-queues
+    the screening as a background thread so it continues from where it left off.
+
+    No DB model changes required — uses existing status fields.
+    """
+    from app.db.database import SessionLocal
+    from app.db.models import (
+        CandidateProcessing,
+        CandidateProcessingStatus,
+        Screening,
+        ScreeningStatus,
+    )
+    from app.workflows.screening_workflow import run_screening
+
+    db = SessionLocal()
+    try:
+        # Only resume the SINGLE most recent IN_PROGRESS screening.
+        # Running multiple screenings concurrently exhausts the DB connection
+        # pool and hammers the GPU simultaneously. One at a time is correct.
+        screening = (
+            db.query(Screening)
+            .filter(Screening.status == ScreeningStatus.IN_PROGRESS)
+            .order_by(Screening.id.desc())
+            .first()
+        )
+
+        if not screening:
+            logger.info("Startup resume: no interrupted screenings found.")
+            return
+
+        logger.warning(
+            "Startup resume: found interrupted screening %s — resuming.",
+            screening.id,
+        )
+
+        # Reset any candidates stuck in PROCESSING -> PENDING
+        stuck = (
+            db.query(CandidateProcessing)
+            .filter(
+                CandidateProcessing.screening_id == screening.id,
+                CandidateProcessing.status == CandidateProcessingStatus.PROCESSING,
+            )
+            .all()
+        )
+
+        if stuck:
+            logger.info(
+                "Startup resume: resetting %d stuck candidate(s) "
+                "in screening %s -> PENDING",
+                len(stuck),
+                screening.id,
+            )
+            for cp in stuck:
+                cp.status = CandidateProcessingStatus.PENDING
+            db.commit()
+
+        pending_count = (
+            db.query(CandidateProcessing)
+            .filter(
+                CandidateProcessing.screening_id == screening.id,
+                CandidateProcessing.status == CandidateProcessingStatus.PENDING,
+            )
+            .count()
+        )
+
+        if pending_count == 0:
+            logger.info(
+                "Startup resume: screening %s has no pending candidates — skipping.",
+                screening.id,
+            )
+            return
+
+        logger.info(
+            "Startup resume: re-queuing screening %s (%d pending candidates).",
+            screening.id,
+            pending_count,
+        )
+
+        screening_id = screening.id
+
+        def _run(sid: int) -> None:
+            bg_db = SessionLocal()
+            try:
+                run_screening(sid, bg_db)
+            except Exception:
+                logger.exception(
+                    "Startup resume: screening %s failed during auto-resume.", sid
+                )
+            finally:
+                bg_db.close()
+
+        t = threading.Thread(
+            target=_run,
+            args=(screening_id,),
+            name=f"auto-resume-screening-{screening_id}",
+            daemon=True,
+        )
+        t.start()
+
+    except Exception:
+        logger.exception("Startup resume: unexpected error during auto-resume check.")
+    finally:
+        db.close()
 
 
-setup_logging()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan: auto-resume interrupted screenings on startup."""
+    setup_logging()
+    # Run resume check in a thread so it doesn't block server startup
+    t = threading.Thread(
+        target=_resume_interrupted_screenings,
+        name="startup-resume-check",
+        daemon=True,
+    )
+    t.start()
+    yield
+    # (shutdown logic goes here if needed)
+
+
+app = FastAPI(title="ResumeRank Backend", lifespan=lifespan)
+
+
+# Setup CORS for frontend clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 @app.middleware("http")
@@ -52,6 +191,14 @@ def prometheus_metrics():
     return metrics_response()
 
 
+@app.get("/health", tags=["system"])
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "ResumeRank",
+    }
+
+
 app.include_router(hackathon_router)
 app.include_router(domain_router)
 app.include_router(domain_nested_router)
@@ -65,3 +212,4 @@ app.include_router(screenings_router)
 @app.get("/")
 def root():
     return {"message": "ResumeRank Backend is running"}
+

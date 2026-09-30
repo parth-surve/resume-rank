@@ -1,3 +1,22 @@
+"""
+Evaluator tests aligned to the current implementation.
+
+Current schema: each criterion has ONLY `score` (no evidence or reason).
+Current providers: cerebras (primary), groq, gemini, ollama.
+Current model defaults:
+  groq   -> qwen/qwen3.8-27b
+  gemini -> gemini-2.0-flash
+  ollama -> qwen2.5:7b
+
+Score breakdown for make_mock_evaluation():
+  technical_skills:         6+5+3 = 14
+  competitive_achievement:  0
+  relevant_experience:      4+3+2 = 9
+  projects:                 4+4+4+1 = 13
+  demonstrated_potential:   0+3+0 = 3
+  domain_relevance:         5
+  total_score:              44
+"""
 from unittest.mock import patch
 
 import pytest
@@ -7,92 +26,38 @@ from ai.schemas import CandidateEvaluation
 
 
 def make_mock_evaluation() -> CandidateEvaluation:
+    """
+    Construct a valid CandidateEvaluation using the CURRENT schema.
+    Score-only per criterion; no evidence or reason fields.
+
+    Total: 14 + 0 + 9 + 13 + 3 + 5 = 44
+    """
     return CandidateEvaluation.model_validate(
         {
             "technical_skills": {
-                "skill_match": {
-                    "score": 6,
-                    "evidence": ["Python", "FastAPI"],
-                    "reason": "Relevant backend skills are present.",
-                },
-                "proficiency_evidence": {
-                    "score": 5,
-                    "evidence": ["Built a FastAPI API."],
-                    "reason": "Practical implementation is shown.",
-                },
-                "technical_depth": {
-                    "score": 3,
-                    "evidence": ["FastAPI project"],
-                    "reason": "Some technical depth is demonstrated.",
-                },
+                "skill_match": {"score": 6},
+                "proficiency_evidence": {"score": 5},
+                "technical_depth": {"score": 3},
             },
-            "competitive_achievement": {
-                "score": 0,
-                "evidence": [],
-                "reason": "No competitive achievement was provided.",
-            },
+            "competitive_achievement": {"score": 0},
             "relevant_experience": {
-                "relevance_and_responsibility": {
-                    "score": 4,
-                    "evidence": ["Backend internship"],
-                    "reason": "Relevant backend experience is shown.",
-                },
-                "technical_depth": {
-                    "score": 3,
-                    "evidence": ["REST APIs"],
-                    "reason": "Backend implementation is demonstrated.",
-                },
-                "evidence_and_impact": {
-                    "score": 2,
-                    "evidence": ["Backend internship"],
-                    "reason": "Impact is not quantified.",
-                },
+                "relevance_and_responsibility": {"score": 4},
+                "technical_depth": {"score": 3},
+                "evidence_and_impact": {"score": 2},
             },
             "projects": {
-                "technical_complexity_and_depth": {
-                    "score": 4,
-                    "evidence": ["FastAPI resume screening API"],
-                    "reason": "A technical project is demonstrated.",
-                },
-                "ownership_and_implementation": {
-                    "score": 4,
-                    "evidence": ["Built the API"],
-                    "reason": "Implementation is explicitly described.",
-                },
-                "relevance_and_problem_solving": {
-                    "score": 4,
-                    "evidence": ["Resume screening API"],
-                    "reason": "The project solves a relevant problem.",
-                },
-                "evidence_of_outcomes": {
-                    "score": 1,
-                    "evidence": [],
-                    "reason": "No measurable outcome was provided.",
-                },
+                "technical_complexity_and_depth": {"score": 4},
+                "ownership_and_implementation": {"score": 4},
+                "relevance_and_problem_solving": {"score": 4},
+                "evidence_of_outcomes": {"score": 1},
             },
             "demonstrated_potential": {
-                "learning_and_growth": {
-                    "score": 0,
-                    "evidence": [],
-                    "reason": "No explicit evidence of technical growth was provided.",
-                },
-                "initiative_and_ownership": {
-                    "score": 3,
-                    "evidence": ["Built a resume screening API"],
-                    "reason": "A concrete project demonstrates initiative.",
-                },
-                "evidence_of_trajectory": {
-                    "score": 0,
-                    "evidence": [],
-                    "reason": "No chronological evidence of technical progression was provided.",
-                },
+                "learning_and_growth": {"score": 0},
+                "initiative_and_ownership": {"score": 3},
+                "evidence_of_trajectory": {"score": 0},
             },
             "domain_relevance": {
-                "domain_alignment": {
-                    "score": 5,
-                    "evidence": ["FastAPI", "Python"],
-                    "reason": "Backend skills align with the requirement.",
-                },
+                "domain_alignment": {"score": 5},
             },
         }
     )

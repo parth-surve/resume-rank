@@ -1,6 +1,5 @@
-import asyncio
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal, get_db
@@ -69,7 +68,7 @@ def start_screening(
     def _run():
         bg_db = SessionLocal()
         try:
-            asyncio.run(run_screening(screening_id, bg_db))
+            run_screening(screening_id, bg_db)
         finally:
             bg_db.close()
 
@@ -126,3 +125,19 @@ def manual_override(
         reason=payload.reason,
         user_id=current_user.id,
     )
+
+
+@router.get(
+    "/{screening_id}/export",
+)
+def export_screening_results(
+    screening_id: int,
+    db: Session = Depends(get_db),
+):
+    excel_bytes, filename = ScreeningService(db).export_results(screening_id)
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+

@@ -180,11 +180,11 @@ def run_pipeline(
             parsing_error = parse_res.get("error_reason")
 
             if parsing_status == "SUCCESS":
-                print(f"  ✓ Parsed Skills: {parsed_data.get('technical_skills', [])}")
+                print(f"  [OK] Parsed Skills: {parsed_data.get('technical_skills', [])}")
             else:
-                print(f"  ✗ Parsing failed: {parsing_error}")
+                print(f"  [FAIL] Parsing failed: {parsing_error}")
         else:
-            print(f"  ✗ Download failed: {dl_result.get('reason')}")
+            print(f"  [FAIL] Download failed: {dl_result.get('reason')}")
 
         pipeline_results.append(
             {

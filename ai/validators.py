@@ -37,22 +37,6 @@ def validate_evaluation(evaluation: CandidateEvaluation) -> list[str]:
                 f"{path}.score must be between 0 and {max_score}."
             )
 
-        if not isinstance(criterion.evidence, list):
-            errors.append(f"{path}.evidence must be a list.")
-
-        else:
-            for index, evidence in enumerate(criterion.evidence):
-                if not isinstance(evidence, str):
-                    errors.append(
-                        f"{path}.evidence[{index}] must be a string."
-                    )
-
-        if not isinstance(criterion.reason, str):
-            errors.append(f"{path}.reason must be a string.")
-
-        elif not criterion.reason.strip():
-            errors.append(f"{path}.reason cannot be empty.")
-
     # --------------------------------------------------------
     # Technical Skills
     # --------------------------------------------------------

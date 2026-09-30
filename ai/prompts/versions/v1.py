@@ -54,8 +54,6 @@ EVALUATION RULES:
 
 11. Give every criterion:
     - a score within its allowed range
-    - supporting evidence
-    - a concise reason for the score
 
 12. Return only the requested structured evaluation.
 
@@ -182,15 +180,10 @@ You MUST include every required nested criterion inside each section.
 For every criterion evaluation:
 
 - score must be an integer within the allowed range
-- evidence must contain only evidence supported by the resume
-- evidence must be an array of strings
-- reason must explain why the evidence supports the score
 
 If the resume contains no evidence for a criterion, return:
 
 - score: 0
-- evidence: []
-- reason: explain that no supporting evidence was provided
 
 Do not omit any criterion or section.
 
