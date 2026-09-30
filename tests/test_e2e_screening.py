@@ -39,33 +39,31 @@ def make_mock_ai_eval(total_score: int) -> dict:
     """Construct mock AI result with structured subcriteria."""
     eval_model = CandidateEvaluation.model_validate({
         "technical_skills": {
-            "skill_match": {"score": 6, "evidence": ["Python"], "reason": "Match"},
-            "proficiency_evidence": {"score": 5, "evidence": ["Built API"], "reason": "Proficient"},
-            "technical_depth": {"score": 3, "evidence": ["SQL optimization"], "reason": "Depth"},
+            "skill_match": {"score": 6},
+            "proficiency_evidence": {"score": 5},
+            "technical_depth": {"score": 3},
         },
         "competitive_achievement": {
             "score": 5,
-            "evidence": ["Hackathon 2nd place"],
-            "reason": "Good result",
         },
         "relevant_experience": {
-            "relevance_and_responsibility": {"score": 4, "evidence": ["Intern"], "reason": "Relevant"},
-            "technical_depth": {"score": 3, "evidence": ["APIs"], "reason": "Solid"},
-            "evidence_and_impact": {"score": 2, "evidence": ["Completed tasks"], "reason": "Impact"},
+            "relevance_and_responsibility": {"score": 4},
+            "technical_depth": {"score": 3},
+            "evidence_and_impact": {"score": 2},
         },
         "projects": {
-            "technical_complexity_and_depth": {"score": 6, "evidence": ["ATS project"], "reason": "Complex"},
-            "ownership_and_implementation": {"score": 5, "evidence": ["Lead author"], "reason": "High ownership"},
-            "relevance_and_problem_solving": {"score": 4, "evidence": ["Solved latency"], "reason": "Good problem"},
-            "evidence_of_outcomes": {"score": 2, "evidence": ["Shipped v1"], "reason": "Outcome"},
+            "technical_complexity_and_depth": {"score": 6},
+            "ownership_and_implementation": {"score": 5},
+            "relevance_and_problem_solving": {"score": 4},
+            "evidence_of_outcomes": {"score": 2},
         },
         "demonstrated_potential": {
-            "learning_and_growth": {"score": 3, "evidence": ["Learned Rust"], "reason": "Growth"},
-            "initiative_and_ownership": {"score": 3, "evidence": ["Started project"], "reason": "Initiative"},
-            "evidence_of_trajectory": {"score": 2, "evidence": ["Promoted"], "reason": "Trajectory"},
+            "learning_and_growth": {"score": 3},
+            "initiative_and_ownership": {"score": 3},
+            "evidence_of_trajectory": {"score": 2},
         },
         "domain_relevance": {
-            "domain_alignment": {"score": 5, "evidence": ["AI background"], "reason": "Aligned"},
+            "domain_alignment": {"score": 5},
         },
     })
 

@@ -73,12 +73,18 @@ class ScreeningService:
     def start(self, screening_id: int) -> ScreeningStartOut:
         screening = self.get(screening_id)
 
-        if screening.status != ScreeningStatus.PENDING:
+        restartable = {
+            ScreeningStatus.PENDING,
+            ScreeningStatus.IN_PROGRESS,  # interrupted by crash — resume
+            ScreeningStatus.FAILED,       # fully failed — retry
+        }
+        if screening.status not in restartable:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"Cannot start a screening with status "
-                    f"{screening.status.value}"
+                    f"{screening.status.value}. "
+                    f"Only PENDING, IN_PROGRESS, or FAILED screenings can be started."
                 ),
             )
 

@@ -69,7 +69,9 @@ class ImportService:
             # 5. Save valid candidates and resumes to PostgreSQL
             created_candidates, created_resumes = (
                 CandidateIngestionService(self.db).ingest_candidates(
-                    valid_df
+                    valid_df,
+                    hackathon_id=record.hackathon_id,
+                    domain_id=record.domain_id
                 )
             )
 

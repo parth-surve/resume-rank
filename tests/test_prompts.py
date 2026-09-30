@@ -47,92 +47,33 @@ def test_evaluator_returns_candidate_evaluation(monkeypatch):
     expected = CandidateEvaluation.model_validate(
         {
             "technical_skills": {
-                "skill_match": {
-                    "score": 5,
-                    "evidence": ["Python", "FastAPI"],
-                    "reason": "Relevant skills are demonstrated.",
-                },
-                "proficiency_evidence": {
-                    "score": 4,
-                    "evidence": ["2 years of experience"],
-                    "reason": "Practical experience is demonstrated.",
-                },
-                "technical_depth": {
-                    "score": 1,
-                    "evidence": ["Built REST APIs"],
-                    "reason": "Limited technical depth is shown.",
-                },
+                "skill_match": {"score": 5},
+                "proficiency_evidence": {"score": 4},
+                "technical_depth": {"score": 1},
             },
-            "competitive_achievement": {
-                "score": 0,
-                "evidence": [],
-                "reason": "No competitive achievement evidence was provided.",
-            },
+            "competitive_achievement": {"score": 0},
             "relevant_experience": {
-                "relevance_and_responsibility": {
-                    "score": 3,
-                    "evidence": ["2 years of backend experience"],
-                    "reason": "Relevant experience is demonstrated.",
-                },
-                "technical_depth": {
-                    "score": 1,
-                    "evidence": ["FastAPI"],
-                    "reason": "Basic technical depth is shown.",
-                },
-                "evidence_and_impact": {
-                    "score": 1,
-                    "evidence": ["Built REST APIs"],
-                    "reason": "Some implementation evidence is provided.",
-                },
+                "relevance_and_responsibility": {"score": 3},
+                "technical_depth": {"score": 1},
+                "evidence_and_impact": {"score": 1},
             },
             "projects": {
-                "technical_complexity_and_depth": {
-                    "score": 3,
-                    "evidence": ["REST APIs"],
-                    "reason": "Moderate technical complexity is shown.",
-                },
-                "ownership_and_implementation": {
-                    "score": 4,
-                    "evidence": ["Built REST APIs"],
-                    "reason": "Implementation ownership is demonstrated.",
-                },
-                "relevance_and_problem_solving": {
-                    "score": 3,
-                    "evidence": ["Backend API development"],
-                    "reason": "The work is relevant to the domain.",
-                },
-                "evidence_of_outcomes": {
-                    "score": 0,
-                    "evidence": [],
-                    "reason": "No outcome evidence was provided.",
-                },
+                "technical_complexity_and_depth": {"score": 3},
+                "ownership_and_implementation": {"score": 4},
+                "relevance_and_problem_solving": {"score": 3},
+                "evidence_of_outcomes": {"score": 0},
             },
             "demonstrated_potential": {
-                "learning_and_growth": {
-                    "score": 2,
-                    "evidence": ["FastAPI", "PostgreSQL"],
-                    "reason": "Practical technology use is demonstrated.",
-                },
-                "initiative_and_ownership": {
-                    "score": 2,
-                    "evidence": ["Built REST APIs"],
-                    "reason": "Implementation ownership is shown.",
-                },
-                "evidence_of_trajectory": {
-                    "score": 2,
-                    "evidence": ["2 years of experience"],
-                    "reason": "Some progression evidence is present.",
-                },
+                "learning_and_growth": {"score": 2},
+                "initiative_and_ownership": {"score": 2},
+                "evidence_of_trajectory": {"score": 2},
             },
             "domain_relevance": {
-                "domain_alignment": {
-                    "score": 6,
-                    "evidence": ["Python", "FastAPI", "PostgreSQL"],
-                    "reason": "The candidate aligns with Python backend development.",
-                }
+                "domain_alignment": {"score": 6},
             },
         }
     )
+
 
     def fake_provider(prompt, response_model):
         assert "Python developer with FastAPI experience." in prompt
